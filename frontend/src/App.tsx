@@ -8,6 +8,7 @@ import { VerifyView } from './views/VerifyView'
 import { useWallet } from './hooks/useWallet'
 import { useEvidence } from './hooks/useEvidence'
 import { useVerification } from './hooks/useVerification'
+import { useOpenDisputeCount } from './hooks/useOpenDisputeCount'
 import { useLiveRegion, useA11yStage, useSkipLink } from './hooks/useA11y'
 import type { IdentityTier } from './types'
 import type { View } from './types'
@@ -89,6 +90,12 @@ function App() {
     return () => clearTimeout(timer)
   }, [viewHeadingId])
 
+  const openDisputeCount = useOpenDisputeCount({
+    proofId: evidence.proof?.proofId ?? null,
+    sourceAddress: wallet || undefined,
+    contractId: CONTRACT_ID,
+  })
+
   const provenanceRecord = useMemo(() => {
     if (!evidence.proof) return null
 
@@ -108,8 +115,9 @@ function App() {
       rpcUrl: RPC_URL,
       transactionHash: evidence.registration?.hash ?? null,
       method: methodForTier(evidence.proof.tier),
+      openDisputeCount,
     })
-  }, [evidence.proof, evidence.registration?.hash, verification.chainProof])
+  }, [evidence.proof, evidence.registration?.hash, verification.chainProof, openDisputeCount])
 
   useEffect(() => {
     const updateScrollState = () => setIsScrolled(window.scrollY > 36)
