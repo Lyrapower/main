@@ -1734,8 +1734,7 @@ def create_app() -> Flask:
         job = get_job(job_id)
         if not job:
             return jsonify({"error": "Job not found"}), 404
-        public_job = {key: value for key, value in job.items() if key != "_trace_context"}
-        return jsonify({"ok": True, "job": public_job})
+        return jsonify({"ok": True, "job": public_job_view(job)})
 
     @app.get("/api/jobs/<int:job_id>/download")
     def download_job_result(job_id: int):
@@ -2336,6 +2335,31 @@ def is_hex_32(value: object) -> bool:
     except ValueError:
         return False
     return True
+
+
+# Fields of an internal job record that GET /api/jobs/<id> never returns:
+# ``payload`` carries request inputs (filenames, metadata, proof secrets) and
+# underscore-prefixed keys are internal bookkeeping (trace links, throttle state).
+JOB_PRIVATE_FIELDS = frozenset({"payload"})
+
+
+def public_job_view(job: dict) -> dict:
+    """Public shape of a job for ``GET /api/jobs/<id>``.
+
+    Always includes ``progress``: ``{"phase": str, "percent": float | None}``
+    while a processor reports it, otherwise ``null``.
+    """
+    view = {
+        key: value
+        for key, value in job.items()
+        if key not in JOB_PRIVATE_FIELDS and not str(key).startswith("_")
+    }
+    progress = job.get("progress")
+    if isinstance(progress, dict) and isinstance(progress.get("phase"), str):
+        view["progress"] = {"phase": progress["phase"], "percent": progress.get("percent")}
+    else:
+        view["progress"] = None
+    return view
 
 
 def normalize_tx_hash(value: object) -> str | None:
